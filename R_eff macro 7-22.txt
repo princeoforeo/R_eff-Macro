@@ -1,0 +1,76 @@
+
+run("Clear Results");
+
+list = getList("image.titles");
+selectWindow(list[0]);
+w = getWidth(); 
+h = getHeight();
+
+x_sum = newArray(w);
+y_sum = newArray(h);
+count = 0;
+
+for(i = 0; i < list.length; i++) {
+    selectWindow(list[i]);
+
+    if(nSlices < 4) continue;
+    //skips an image stack if there is less than 4 slices
+
+    setSlice(4);
+    for(x = 0; x < w; x++) {
+        setSlice(1); pre = getPixel(x, h/2); if(pre == 0) pre = 1;
+	//gets the x axis slices of pixel intensities in the middle of the image for pre bleach image
+
+        setSlice(4); post = getPixel(x, h/2);
+	// gets x axis slice of pixel intensities for postbleach image
+        x_sum[x] = x_sum[x] + post / pre;
+	//normalizes the post bleach to pre-bleach image
+    }
+    for(y = 0; y < h; y++) {
+        setSlice(1); pre = getPixel(w/2, y); if(pre == 0) pre = 1;
+        setSlice(4); post = getPixel(w/2, y);
+        y_sum[y] = y_sum[y] + post / pre;
+    }
+    count++;
+}
+
+for(i = 0; i < w; i++) {
+    setResult("Pixel", i, i);
+    setResult("X_Mean", i, x_sum[i] / count);
+}
+
+for(i = 0; i < h; i++) {
+    if(i < w) {
+        setResult("Y_Mean", i, y_sum[i] / count);
+    } else {
+        setResult("Pixel", i, i);
+        setResult("Y_Mean", i, y_sum[i] / count);
+    }
+}
+
+updateResults();
+
+// generate plots for quick visualization
+x_values = newArray(w);
+y_values = newArray(h);
+for(i = 0; i < w; i++) x_values[i] = x_sum[i] / count;
+for(i = 0; i < h; i++) y_values[i] = y_sum[i] / count;
+
+// average X and Y profiles to reduce noise
+max_len = maxOf(w, h);
+averaged_profile = newArray(max_len);
+for(i = 0; i < max_len; i++) {
+    x_val = 0; y_val = 0; n_vals = 0;
+    if(i < w) { x_val = x_values[i]; n_vals++; }
+    if(i < h) { y_val = y_values[i]; n_vals++; }
+    averaged_profile[i] = (x_val + y_val) / n_vals;
+}
+
+Plot.create("FRAP X Profile", "Pixel Position", "Normalized Intensity", x_values);
+Plot.show();
+
+Plot.create("FRAP Y Profile", "Pixel Position", "Normalized Intensity", y_values);
+Plot.show();
+
+Plot.create("FRAP Averaged Profile", "Pixel Position", "Normalized Intensity", averaged_profile);
+Plot.show();
